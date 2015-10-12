@@ -1,0 +1,175 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="renderer" content="webkit">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>orz</title>
+<meta name="description" content="">
+<meta name="keywords" content="">
+<link rel="stylesheet">
+</head>
+<body style="text-align:center;background-color:#1e576b">
+    <div>
+        <input type="text" id="dim" placeholder="dim" value="8"/>
+        <input type="button" id="submit" value="submit"/>
+    </div>
+    <div style="margin:1em"><canvas id="logoCanvas"></canvas></div>
+</body>
+<script src="http://code.jquery.com/jquery-1.8.3.js"></script>
+ 
+<script type="text/javascript">
+	var ROUGH = 0.2;
+	function Terrain(detail) {
+		this.detail = detail;
+		this.size = Math.pow(2, detail) + 1;
+		this.max = this.size - 1;
+		this._data = new Array(this.size * this.size);
+	}
+	Terrain.prototype.generate = function() {
+		this.set(0, 0, 50 * Math.random());
+		this.set(0, this.max, 50 * Math.random());
+		this.set(this.max, 0, 50 * Math.random());
+		this.set(this.max, this.max, 50 * Math.random());
+		this.calc(this.max);
+	};
+	Terrain.prototype.set = function(x, y, val) {
+		this._data[y * this.size + x] = val;
+	};
+	Terrain.prototype.get = function(x, y) {
+		return this._data[y * this.size + x];
+	};
+	Terrain.prototype.calc = function(size) {
+		var x, y, half = parseInt(size / 2);
+		var scale = ROUGH * size;
+		if (half < 1) {
+			return;
+		}
+
+		for (y = half; y < this.max; y += size) {
+			for (x = half; x < this.max; x += size)	{
+				var val = this.square(x, y, half, Math.random() * scale * 2 - scale);
+				this.set(x, y, val);
+			}
+		}
+
+		for (y = 0; y <= this.max; y += half) {
+			for (x = (y + half) % size; x <= this.max; x += size) {
+				var val = this.diamond(x, y, half, Math.random() * scale * 2 - scale);
+				this.set(x, y, val);
+			}
+		}
+
+		this.calc(size / 2);
+	};
+	Terrain.prototype.calc2 = function(x, y, size) {
+		var half = parseInt(size / 2);
+		var scale = ROUGH * size;
+		if (half < 1) {
+			return;
+		}
+		// 中心值
+		var mid = this.square(x, y, half, (Math.random() * scale * 2 - scale));
+		this.set(x, y, mid);
+		// 连线延伸
+		this.set(x, y - half, mid + (Math.random() * scale));
+		this.set(x - half, y, mid + (Math.random() * scale));
+		this.set(x, y + half, mid + (Math.random() * scale));
+		this.set(x + half, y, mid + (Math.random() * scale));
+		//  四角递归
+		var subhalf = half / 2;
+		this.calc2(x - subhalf, y - subhalf, half);
+		this.calc2(x + subhalf, y - subhalf, half);
+		this.calc2(x - subhalf, y + subhalf, half);
+		this.calc2(x + subhalf, y + subhalf, half);
+	};
+	Terrain.prototype.avg = function(array) {
+		// 求四点平均值
+		var sum = 0;
+		for (var i = 0; i < array.length; i += 1) {
+			if ((!array[i]) || isNaN(array[i])) {
+				sum += 0;
+			} else {
+				sum += array[i];
+			}
+		}
+		//console.log("sum %s, cnt %s, avg %s", sum, array.length, sum/array.length);
+		return sum / array.length;
+	};
+	Terrain.prototype.square = function(x, y, half, offset) {
+		// 矩形中点求值
+		var avgArr = [
+				this.get(x - half, y - half), 	// ↑
+				this.get(x + half, y - half), 	// ←
+				this.get(x - half, y + half), 	// →
+				this.get(x + half, y + half) 	// ↓
+			];
+		var avg = this.avg(avgArr);
+		var val = avg + offset;
+		return val;
+	};
+	Terrain.prototype.diamond = function(x, y, size, offset) {
+		// 矩形中点求值
+		var avgArr = [
+				this.get(x, y - size),
+				this.get(x + size, y),
+				this.get(x, y + size),
+				this.get(x - size, y)
+			];
+		var avg = this.avg(avgArr);
+		var val = avg + offset;
+		return val;
+	};	
+    function draw(detail) {
+		var border = 1;
+		var canvas = document.getElementById('logoCanvas');
+		var terrain = new Terrain(detail);
+		var w = terrain.size;
+		var h = terrain.size;
+		var fillWidth = border * w;
+		var fillHeight = border * h;
+		$(canvas).attr("height", fillHeight + "px");
+		$(canvas).attr("width", fillWidth + "px");
+		var ctx = canvas.getContext('2d');
+		ctx.clearRect(0, 0, fillWidth, fillHeight);
+		terrain.generate();
+		for (var y = 0; y < terrain.size; y += 1) {
+			for (var x = 0; x < terrain.size; x += 1) {
+				var v = terrain.get(x, y);
+				var color = '#000';
+				if (v < -60) {
+					color = '#297B98';
+				} else if (v < -20) {
+					color = '#3A849E';
+				} else if (v < 2) {
+					color = '#66ccff';
+				} else if (v < 20) {
+					color = '#A9871D';
+				} else if (v < 25) {
+					color = '#9B843B';
+				} else if (v < 30) {
+					color = '#658800';
+				} else if (v < 50) {
+					color = '#1DA93F';
+				} else if (v < 100) {
+					color = '#C8BA8E';
+				} else {
+					color = '#FFF';
+				}
+				ctx.fillStyle = color;
+				ctx.fillRect(x * border, y * border, border, border);
+			}
+		}
+		console.log(terrain);
+	}
+    $(document).ready(function() {
+        draw(8);
+        $("#submit").click(function(){
+            var d = $("#dim").val();
+            draw(d);
+        });
+    });
+ 
+</script>
+</html>
