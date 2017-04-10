@@ -1,0 +1,156 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="renderer" content="webkit">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>orz</title>
+<meta name="description" content="">
+<meta name="keywords" content="">
+<link rel="stylesheet">
+</head>
+<body style="text-align:center;background-color:#1e576b">
+	<div>
+		<input type="text" id="dim" placeholder="dim" value="8"/>
+		<input type="button" id="submit" value="submit"/>
+	</div>
+	<div style="margin-top:1em;">
+		<img src="" id="res"/>
+	</div>
+	<div style="margin:1em;"><canvas id="logoCanvas"></canvas></div>
+</body>
+<script src="http://lib.sinaapp.com/js/jquery/1.9.1/jquery-1.9.1.min.js"></script>
+
+<script type="text/javascript">
+	var ROUGH = 0.2;
+	function Player(x, y, dir) {
+		this.x = x;
+		this.y = y;
+		this.dir = dir;
+	}
+	function Terrain(detail) {
+		this.detail = detail;
+		this.size = detail + 1;
+		this.max = this.size - 1;
+		this._data = new Uint8Array(this.size * this.size);
+		this.tests = 0;
+		this.TESTMAX = Math.pow(2, this.max * this.max);
+	}
+	Terrain.prototype.generate = function() {
+		this.calc(0, 0, this.max, this.max, this.max * 2);
+		this.set(this.max, this.max, 1);
+	};
+	Terrain.prototype.set = function(x, y, val) {
+		this._data[y * this.size + x] = val;
+	};
+	Terrain.prototype.get = function(x, y) {
+		return this._data[y * this.size + x];
+	};
+	Terrain.prototype.calc = function(x, y, fx, fy, deep) {
+		this.tests += 1;
+		if (this.tests > this.TESTMAX) {
+			return false;
+		}
+		if (deep < 0) {
+			return false;
+		}
+		if (x == fx && y == fy) {
+			console.log("finish %d %d", x, y);
+			return true;
+		}
+		if (isNaN(this.get(x, y)) || (this.get(x, y) != 0 && this.get(x, y) != 1)) {
+			// 本格不可行走
+			//console.log("unpassable %s, %s", (!this.get(x, y) && this.get(x, y) != 0), isNaN(this.get(x, y)));
+			return false;
+		}
+		if (this.get(x, y) == 1) {
+			// 已经来过
+			//console.log("passed %d %d", x, y);
+			return false;
+		}
+		//console.log("testing %d, %d", x, y);
+		this.set(x, y, 1); // 标记已来过
+		deep -= 1;
+		var dirs = [[0, -1], [-1, 0], [0, 1], [1, 0]]; // 上下左右
+		var random = Math.floor(Math.random() * 3);
+		if (random  < 0 || random > 4) {
+			console.log("random %d", random);
+		}
+		// 交换
+		var temp = [dirs[0][0], dirs[0][1]];
+		dirs[0][0] = dirs[random + 1][0];dirs[0][1] = dirs[random + 1][1];
+		dirs[random + 1][0] = temp[0];dirs[random + 1][1] = temp[1];
+		// 前进
+		for (var i = 0; i < 4; i += 1) {
+			var dir = dirs[i];
+			if (!dir) {
+				console.log("i %d, di %d", i, dirs[i]);
+			}
+			if (this.calc(x + dir[0], y + dir[1], fx, fy, deep)) {
+				return true;
+			}
+		}
+		this.set(x, y, 0); // 标记未来过
+		return false;
+	};
+	function draw(detail) {
+		console.log("drawing %s", detail);
+		if (isNaN(detail)) {
+			console.log("NaN %s", detail);
+			return;
+		}
+		var border = 24;
+		var canvas = document.getElementById('logoCanvas');
+		var terrain = new Terrain(detail);
+		var w = terrain.size;
+		var h = terrain.size;
+		var fillWidth = border * w;
+		var fillHeight = border * h;
+		$(canvas).attr("height", fillHeight + "px");
+		$(canvas).attr("width", fillWidth + "px");
+		var ctx = canvas.getContext('2d');
+		ctx.clearRect(0, 0, fillWidth, fillHeight);
+		terrain.generate();
+		for (var y = 0; y < terrain.size; y += 1) {
+			for (var x = 0; x < terrain.size; x += 1) {
+				var v = terrain.get(x, y);
+				var color = '#000';
+				if (v == 1) {
+					color = "#fff";
+				}
+				ctx.fillStyle = color;
+				ctx.fillRect(x * border, y * border, border, border);
+			}
+		}
+		
+		var dataURL = canvas.toDataURL('image/png');
+		$("#res").attr("src", dataURL);
+		console.log(terrain);
+	}
+
+	// var canvas, ctx, border, fillWidth, fillHeight, request;
+	// function drawRandom() {
+	// 	var num = 60;
+	// 	ctx.clearRect(0, 0, fillWidth, fillHeight);
+	// 	for (var i = 0; i < 10; i += 1) {
+	// 		var x = Math.random() * 8;
+	// 		var y = Math.random() * 8;
+	// 		ctx.fillStyle = "#fff";
+	// 		ctx.fillRect(x * border, y * border, border, border);
+	// 	}
+	// 	var dataURL = canvas.toDataURL('image/png');
+	// 	$("#res").attr("src", dataURL);
+	// 	window.cancelAnimationFrame(request);
+	// 	request = window.requestAnimationFrame(drawRandom);		
+	// }
+	$(document).ready(function() {
+		draw(8);
+		$("#submit").click(function(){
+			var d = $("#dim").val();
+			console.log("submit %s", dim);
+			draw(Math.floor(d));
+		});
+	});
+</script>
+</html>

@@ -12,10 +12,10 @@
 </head>
 <body style="text-align:center;background-color:#1e576b">
 	<div>
-		<input type="text" id="dim" placeholder="dim" value="8"/>
+		<input type="text" id="dim" placeholder="dim" value="6"/>
 		<input type="button" id="submit" value="submit"/>
 	</div>
-	<div style="margin-top:1em;">
+	<div style="margin-top:1em;display:none;">
 		<img src="" id="res"/>
 	</div>
 	<div style="margin:1em"><canvas id="logoCanvas"></canvas></div>
@@ -24,17 +24,47 @@
 
 <script type="text/javascript">
 	var ROUGH = 0.2;
-	function Terrain(detail) {
+	var pos = 0;
+	var last_terrain = null;
+	function Terrain(detail, last_terrain, dir) {
 		this.detail = detail;
 		this.size = Math.pow(2, detail) + 1;
 		this.max = this.size - 1;
 		this._data = new Array(this.size * this.size);
+		for(var i = 0; i < this.size * this.size; i += 1) {
+			this._data[i] = NaN;
+		}
+		if (last_terrain) {
+			switch (dir) {
+				case 2: // 复制最上行
+					for (var i = 0; i < this.size; i += 1) {
+						this._data[i] = last_terrain._data[i + this.size * (this.size - 1)];
+					}
+					break;
+				case 4: // 复制最左列
+					for (var i = 0; i < this.size; i += 1) {
+						this._data[i * this.size - 1] = last_terrain._data[i * this.size];
+					}
+					break;
+				case 6: // 复制最右列
+					for (var i = 0; i < this.size; i += 1) {
+						this._data[i * this.size] = last_terrain._data[i * this.size - 1];
+					}
+					break;
+				case 8: // 复制最下行
+					for (var i = 0; i < this.size; i += 1) {
+						this._data[i + this.size * (this.size - 1)] = last_terrain._data[i];
+					}
+					break;
+			}
+		}
+		
 	}
 	Terrain.prototype.generate = function() {
-		this.set(0, 0, 50 * Math.random());
+		this.set(0, 0, 20 * Math.random());
 		this.set(0, this.max, 50 * Math.random());
-		this.set(this.max, 0, 50 * Math.random());
-		this.set(this.max, this.max, 50 * Math.random());
+		this.set(this.max, 0, 10 * Math.random());
+		this.set(this.max, this.max, -50 * Math.random());
 		this.calc(this.max);
 	};
 	Terrain.prototype.set = function(x, y, val) {
@@ -52,6 +82,9 @@
 
 		for (y = half; y < this.max; y += size) {
 			for (x = half; x < this.max; x += size)	{
+				if (!isNaN(this.get(x, y))) {
+					continue;
+				}
 				var val = this.square(x, y, half, Math.random() * scale * 2 - scale);
 				this.set(x, y, val);
 			}
@@ -59,6 +92,9 @@
 
 		for (y = 0; y <= this.max; y += half) {
 			for (x = (y + half) % size; x <= this.max; x += size) {
+				if (!isNaN(this.get(x, y))) {
+					continue;
+				}
 				var val = this.diamond(x, y, half, Math.random() * scale * 2 - scale);
 				this.set(x, y, val);
 			}
@@ -124,19 +160,29 @@
 		var val = avg + offset;
 		return val;
 	};	
-	function draw(detail) {
-		var border = 1;
+	function draw(detail, last_terrain, pos, dir) {
+		pos = pos || 0;
+		var border = 4;
 		var canvas = document.getElementById('logoCanvas');
-		var terrain = new Terrain(detail);
+		var terrain = new Terrain(detail, last_terrain, dir);
 		var w = terrain.size;
 		var h = terrain.size;
-		var fillWidth = border * w;
-		var fillHeight = border * h;
-		$(canvas).attr("height", fillHeight + "px");
-		$(canvas).attr("width", fillWidth + "px");
+		var col = 1;
+		var row = 4;
+		var fillWidth = border * w * col;
+		var fillHeight = border * h * row;
+		if (!last_terrain) {
+			$(canvas).attr("height", fillHeight + "px");
+			$(canvas).attr("width", fillWidth + "px");
+		}
 		var ctx = canvas.getContext('2d');
-		ctx.clearRect(0, 0, fillWidth, fillHeight);
+		//ctx.clearRect(0, 0, fillWidth, fillHeight);
 		terrain.generate();
+		var sx = pos % col;
+		var sy = pos / col % row;
+		sx = sx * w;
+		sy = sy * h;
+		console.log(sx, sy, w, h);
 		for (var y = 0; y < terrain.size; y += 1) {
 			for (var x = 0; x < terrain.size; x += 1) {
 				var v = terrain.get(x, y);
@@ -161,19 +207,21 @@
 					color = '#FFF';
 				}
 				ctx.fillStyle = color;
-				ctx.fillRect(x * border, y * border, border, border);
+				ctx.fillRect((x + sx) * border, (y + sy) * border, border, border);
 			}
 		}
-		var dataURL = canvas.toDataURL('image/png');
-		$("#res").attr("src", dataURL);
-		console.log(terrain);
+		//var dataURL = canvas.toDataURL('image/png');
+		//$("#res").attr("src", dataURL);
+		//console.log(terrain);
+		return terrain;
 	}
 	$(document).ready(function() {
-		draw(8);
+		last_terrain = draw(6);
 		$("#submit").click(function(){
 			var d = $("#dim").val();
-			draw(d);
-		);
+			pos += 1;
+			last_terrain = draw(parseInt(d), last_terrain, pos, 2);
+		});
 	});
 </script>
 </html>
