@@ -1,2 +1,2 @@
 教程作业……
-[教程](http://blog.jobbole.com/68668/)/[演示](http://nocknow.com/divide.htm)
+[教程](http://blog.jobbole.com/68668/)/[演示](http://www.nocknow.com/divide.htm)
